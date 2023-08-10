@@ -1,0 +1,51 @@
+# Docs for the Azure Web Apps Deploy action: https://github.com/Azure/webapps-deploy
+# More GitHub Actions for Azure: https://github.com/Azure/actions
+
+name: Build and deploy container app to Azure Web App - studentperformance4
+
+on:
+  push:
+    branches:
+      - main
+  workflow_dispatch:
+
+jobs:
+  build:
+    runs-on: 'ubuntu-latest'
+
+    steps:
+    - uses: actions/checkout@v2
+
+    - name: Set up Docker Buildx
+      uses: docker/setup-buildx-action@v2
+
+    - name: Log in to registry
+      uses: docker/login-action@v2
+      with:
+        registry: https://dockerdeploy2.azurecr.io/
+        username: ${{ secrets.AzureAppService_ContainerUsername_f50844e6513949268a4a4a63e813f73c }}
+        password: ${{ secrets.AzureAppService_ContainerPassword_7bfe684fb1e04bce8a482b02c6bb6054 }}
+
+    - name: Build and push container image to registry
+      uses: docker/build-push-action@v3
+      with:
+        push: true
+        tags: dockerdeploy2.azurecr.io/${{ secrets.AzureAppService_ContainerUsername_f50844e6513949268a4a4a63e813f73c }}/student_performance:${{ github.sha }}
+        file: ./Dockerfile
+
+  deploy:
+    runs-on: ubuntu-latest
+    needs: build
+    environment:
+      name: 'production'
+      url: ${{ steps.deploy-to-webapp.outputs.webapp-url }}
+
+    steps:
+    - name: Deploy to Azure Web App
+      id: deploy-to-webapp
+      uses: azure/webapps-deploy@v2
+      with:
+        app-name: 'studentperformance4'
+        slot-name: 'production'
+        publish-profile: ${{ secrets.AzureAppService_PublishProfile_00e560c0eff44b43abffc1823a4e9844 }}
+        images: 'dockerdeploy2.azurecr.io/${{ secrets.AzureAppService_ContainerUsername_f50844e6513949268a4a4a63e813f73c }}/student_performance:${{ github.sha }}'
